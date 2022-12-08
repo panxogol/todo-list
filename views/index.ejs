@@ -9,14 +9,18 @@
 
     <div class="box">
 
-        <% for (let i=0; i < itemList.length; i++) {%>
-            <div class="item">
-                <input type="checkbox">
-                <p>
-                    <%= itemList[i] %>
-                </p>
-            </div>
-            <% } %>
+        <% itemList.forEach((item)=> { %>
+            <form action="/delete" method="post">
+                <div class="item">
+                    <input type="checkbox" name="checkbox" value="<%= item._id %>" 
+                    onchange="this.form.submit()">
+                    <p>
+                        <%= item.name %>
+                    </p>
+                </div>
+            </form>
+            <% }); %>
+
 
                 <form clasd="item" action="/" method="post">
                     <input type="text" name="newItem" placeholder="New Item" autocomplete="off" autofocus>
