@@ -1,8 +1,8 @@
 // ----- IMPORTS -----
 const express = require("express");
 const dotenv = require("dotenv");
-const date = require(__dirname + "/date.js");
 const mongoose = require("mongoose");
+const _ = require("lodash");
 
 // DOTENV CONFIG
 dotenv.config();
@@ -36,8 +36,15 @@ const itemsSchema = new mongoose.Schema({
     }
 });
 
+const listSchema = new mongoose.Schema({
+    name: String,
+    items: [itemsSchema],
+});
+
 // MODEL
 const Item = mongoose.model("item", itemsSchema);
+const List = mongoose.model("list", listSchema);
+
 
 // Create example items
 const first = new Item({ name: "Welcome to your To Do list!" });
@@ -47,20 +54,23 @@ const third = new Item({ name: "<-- Hit this to delete the item." });
 const defaultItems = [first, second, third];
 
 
-// PAGES
+// --- PAGES ---
+
+// HOME PAGE
 app.get("/", (req, res) => {
-    const day = date.getDate();
     const items = [];
 
     // GET THE ITEMS FROM DB
     Item.find({}, (err, results) => {
         if (err) {
             console.log(err);
-            items.push("Error: Not connected to DB.");
+            items.push("Error: " + err);
         } else if (results.length === 0) {
             Item.insertMany(defaultItems, e => {
                 if (e) {
                     console.log(e);
+                } else {
+                    console.log("Default items added to database.");
                 }
             });
             res.redirect("/");
@@ -71,7 +81,7 @@ app.get("/", (req, res) => {
         };
 
         const context = {
-            day: day,
+            listTitle: "Today",
             itemList: items,
         };
         res.render("index", context);
@@ -82,25 +92,92 @@ app.get("/about", (req, res) => {
     res.render("about");
 });
 
+// MORE LISTS
+app.get("/:listTitle", (req, res) => {
 
-// POSTS
-app.post("/", (req, res) => {
-    const itemName = req.body.newItem;
-    const item = new Item({ name: itemName });
-    item.save().catch(e => { console.log(e) });
-    res.redirect("/");
+    const listTitle = _.capitalize(req.params.listTitle);
+
+    const items = [];
+
+    List.findOne({ name: listTitle }, (err, results) => {
+        if (err) {
+            console.log(`Error: ${err}.`);
+        } else {
+            if (results) {
+                console.log(`List ${listTitle} already exists.`)
+                // Save existing list items
+                results.items.forEach((item) => {
+                    items.push(item);
+                });
+            } else {
+                console.log(`List ${listTitle} not found.`);
+                console.log(`Creating default list with name ${listTitle}.`);
+                // Make new collection and add a list
+                const list = new List({
+                    name: listTitle,
+                    items: defaultItems,
+                });
+                list.save();
+                res.redirect(`/${listTitle}`);
+            };
+        };
+        res.render("index", {
+            listTitle: listTitle,
+            itemList: items,
+        });
+    });
 });
 
+// --- POSTS  ---
+
+// SHOW ITEMS
+app.post("/", (req, res) => {
+    const itemName = req.body.newItem;
+    const listName = req.body.list;
+    const item = new Item({ name: itemName });
+
+    if (listName === "Today") {
+        item.save().catch(e => { console.log(e) });
+        res.redirect("/");
+    } else {
+        List.findOne({ name: listName }, (err, foundedList) => {
+            if (err) {
+                console.log(err);
+                res.redirect("/");
+            } else {
+                foundedList.items.push(item);
+                foundedList.save().catch(e => { console.log(e) });
+                res.redirect("/" + listName);
+            };
+        });
+    };
+});
+
+// DELETE ITEMS
 app.post("/delete", (req, res) => {
     const itemId = req.body.checkbox;
-    Item.findByIdAndRemove(itemId, e => {
-        if (e) {
-            console.log(`Error: id: ${itemId.slice(0, 10)}... did not remove. ${e}`);
-        } else {
-            console.log(`item ${itemId.slice(0, 10)}... was succesfully removed.`);
-        }
-        res.redirect("/");
-    });
+    const listName = req.body.listName;
+
+    if (listName === "Today") {
+        Item.findByIdAndRemove(itemId, e => {
+            if (e) {
+                console.log(`Error: id: ${itemId.slice(0, 10)}... did not remove. ${e}`);
+            } else {
+                console.log(`item ${itemId.slice(0, 10)}... was succesfully removed.`);
+            }
+            res.redirect("/");
+        });
+    } else {
+        List.findOneAndUpdate(
+            { name: listName },
+            { $pull: { items: { _id: itemId } } },
+            (err, results) => {
+                if (err) {
+                    console.log(err);
+                }
+                res.redirect("/" + listName);
+            });
+    };
 });
 
 // LISTEN

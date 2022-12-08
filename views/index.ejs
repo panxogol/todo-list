@@ -2,7 +2,7 @@
 
     <div class="box" id="heading">
         <h1>
-            <%= day %>
+            <%= listTitle %>
         </h1>
     </div>
 
@@ -18,13 +18,14 @@
                         <%= item.name %>
                     </p>
                 </div>
+                <input type="hidden" name="listName" value="<%= listTitle %>">
             </form>
             <% }); %>
 
 
                 <form clasd="item" action="/" method="post">
                     <input type="text" name="newItem" placeholder="New Item" autocomplete="off" autofocus>
-                    <button type="submit">+</button>
+                    <button type="submit" name="list" value="<%= listTitle %>">+</button>
                 </form>
     </div>
 
