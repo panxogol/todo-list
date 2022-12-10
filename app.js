@@ -11,6 +11,7 @@ dotenv.config();
 const port = process.env.PORT;
 const dbUser = process.env.DB_USER;
 const dbPass = process.env.DB_PASS;
+const dbEndpoint = process.env.DB_ENDPOINT;
 
 // EXPRESS CONFIGS
 const app = express();
@@ -21,9 +22,12 @@ app.set("view engine", "ejs");
 
 // MONGOSE CONFIGS
 const dbName = "todolistDB";
-const url = `mongodb://${dbUser}:${dbPass}@localhost:27017`;
-mongoose.connect(`${url}/${dbName}`, {
-    authSource: "admin",
+const url = `mongodb+srv://${dbUser}:${dbPass}@${dbEndpoint}`;
+
+mongoose.connect(`${url}/${dbName}?retryWrites=true&w=majority`, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    // authSource: "admin",
 }).then(() => {
     console.log("Succesfully connected to database");
 }).catch(e => { console.log(e) });
